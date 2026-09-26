@@ -225,6 +225,43 @@ python3 tests/test_basic.py
 
 优先级：高，但放在前面模块之后做。
 
+
+## 6.5 当前短实验代码在哪里
+
+平台当前“固定 CPU 核短实验计时检测”调用的是仓库内这个目录：
+
+```text
+experiments/clangover-poc/
+```
+
+这里已经包含当前能产生时间差异结果的短实验源码，包括：
+
+```text
+attack.c
+attack_bounded.c
+Makefile
+kyber/
+liboqs/
+```
+
+其中 `attack_bounded.c` 是我们为了比赛演示改出来的短实验版本。它限制了实验规模和迭代上限，适合平台按钮快速调用。
+
+首次运行前需要构建：
+
+```bash
+./scripts/build_timing_demo.sh
+```
+
+构建完成后会生成：
+
+```text
+experiments/clangover-poc/clangover-pqcrystal-kyber-bounded
+```
+
+平台的 `/api/timing-detect` 默认调用这个程序。
+
+注意：旧日志和旧二进制不提交，队员需要在自己环境里重新构建和运行。
+
 ## 7 建议分工
 
 ### 前端同学

@@ -23,3 +23,11 @@ dist/
 .venv/
 venv/
 .DS_Store
+
+# Experiment generated files
+experiments/clangover-poc/clangover-*
+experiments/clangover-poc/attack_log.jsonl
+experiments/clangover-poc/.ref_built
+experiments/clangover-poc/.liboqs_built
+experiments/clangover-poc/kyber/ref/lib/
+experiments/clangover-poc/liboqs/build/

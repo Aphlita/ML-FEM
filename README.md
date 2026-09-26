@@ -61,6 +61,21 @@ ssh -p <PORT> -L 8000:127.0.0.1:8000 <USER>@<HOST>
 http://127.0.0.1:8000
 ```
 
+
+## 构建短实验计时程序
+
+平台的固定 CPU 核短实验计时检测调用仓库内：
+
+```text
+experiments/clangover-poc/
+```
+
+首次运行前执行：
+
+```bash
+./scripts/build_timing_demo.sh
+```
+
 ## 基础测试
 
 ```bash

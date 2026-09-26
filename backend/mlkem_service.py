@@ -195,7 +195,7 @@ class MLKEM:
 
 
 BASIC_VECTOR_DIR = ROOT / "core" / "mlkem-native" / "examples" / "basic"
-TIMING_SOURCE_DIR = ROOT.parent / "A1-13-MLKEM-Experiment" / "sources" / "clangover-poc"
+TIMING_SOURCE_DIR = ROOT / "experiments" / "clangover-poc"
 TIMING_BINARY = TIMING_SOURCE_DIR / "clangover-pqcrystal-kyber-bounded"
 TIMING_LOG = TIMING_SOURCE_DIR / "attack_log.jsonl"
 
