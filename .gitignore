@@ -1,0 +1,25 @@
+# Runtime outputs
+results/
+*.log
+*.pid
+*.jsonl
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+build/
+dist/
+
+# Local environment
+.env
+.venv/
+venv/
+.DS_Store
