@@ -1,0 +1,83 @@
+# Copyright (c) The mlkem-native project authors
+# SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
+
+name: ci-ec2-any
+permissions:
+  contents: read
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: Alternative name of instance
+        default: Graviton2
+      ec2_instance_type:
+        description: Type if EC2 instance to run on
+        default: t4g.small
+      ec2_ami:
+        description: AMI ID
+        type: choice
+        options:
+          - ubuntu (x86_64)
+          - ubuntu (aarch64)
+          - custom AMI
+        default: ubuntu (aarch64)
+      ec2_ami_id:
+        description: AMI ID
+        default: ami-0b5db2dd959c9acb0 # Ubuntu 26.04 LTS (arm64), us-east-1, release 20260819
+      cflags:
+        description: Custom CFLAGS for compilation
+        default:
+      verbose:
+        description: Determine for the log verbosity
+        type: boolean
+        default: false
+      platform:
+        description: Test platform profile
+        type: choice
+        options:
+          - native
+          - linux/x86_64
+          - linux/x86_64-no-avx2
+          - linux/aarch64
+          - linux/ppc64le-power8
+          - linux/ppc64le-power7
+          - linux/riscv64-rvv128
+          - linux/riscv64-rvv256
+          - linux/riscv64-rvv512
+          - linux/riscv64-rvv1024
+          - linux/riscv32
+        required: true
+      opt:
+        description: Determine whether to compile and run the opt/no_opt binary or both.
+        type: choice
+        options:
+          - all
+          - opt
+          - no_opt
+        default: all
+      cbmc:
+        description: Whether to run CBMC proofs
+        type: boolean
+        default: false
+      test:
+        description: Whether to run the test suite
+        type: boolean
+        default: true
+jobs:
+  ci-ec2-any:
+    name: Ad-hoc CI on ${{ inputs.ec2_instance_type }}
+    uses: ./.github/workflows/ci_ec2_reusable.yml
+    with:
+      name: ${{ inputs.name }}
+      ec2_instance_type: ${{ inputs.ec2_instance_type }}
+      ec2_ami: ${{ inputs.ec2_ami }}
+      ec2_ami_id: ${{ inputs.ec2_ami_id }}
+      cflags: ${{ inputs.cflags }}
+      platform: ${{ inputs.platform }}
+      opt: ${{ inputs.opt }}
+      lint: true
+      test: ${{ inputs.test }}
+      cbmc: ${{ inputs.cbmc }}
+      verbose: ${{ inputs.verbose }}
+    secrets:
+      AWS_GITHUB_TOKEN: ${{ secrets.AWS_GITHUB_TOKEN }}

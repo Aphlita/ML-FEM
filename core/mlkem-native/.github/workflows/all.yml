@@ -1,0 +1,131 @@
+# Copyright (c) The mlkem-native project authors
+# SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
+
+name: CI
+permissions:
+  contents: read
+on:
+  workflow_dispatch:
+  push:
+    branches: ["release/**"]
+  pull_request:
+    branches: ["main", "release/**"]
+    types: [ "opened", "synchronize" ]
+  merge_group:
+
+jobs:
+  base:
+    name: Base
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    uses: ./.github/workflows/base.yml
+  lint-markdown:
+    name: Lint Markdown
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    uses: ./.github/workflows/lint_markdown.yml
+  nix:
+    name: Nix
+    permissions:
+      actions: 'write'
+      contents: 'read'
+      id-token: 'write'
+    uses: ./.github/workflows/nix.yml
+  riscv:
+    name: RISC-V
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: [ base ]
+    uses: ./.github/workflows/riscv.yml
+  ci:
+    name: Extended
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: [ base, nix ]
+    uses: ./.github/workflows/ci.yml
+    secrets:
+      AWS_GITHUB_TOKEN: ${{ secrets.AWS_GITHUB_TOKEN }}
+  cbmc:
+    name: CBMC
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      pull-requests: 'write'
+    needs: [ base, nix ]
+    uses: ./.github/workflows/cbmc.yml
+    secrets:
+      AWS_GITHUB_TOKEN: ${{ secrets.AWS_GITHUB_TOKEN }}
+  oqs_integration:
+    name: libOQS
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: [ base ]
+    uses: ./.github/workflows/integration-liboqs.yml
+  pavona_integration:
+    name: Pavona
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: [ base ]
+    uses: ./.github/workflows/integration-pavona.yml
+    secrets:
+      AWS_GITHUB_TOKEN: ${{ secrets.AWS_GITHUB_TOKEN }}
+  awslc_integration:
+    name: AWS-LC
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: [ base ]
+    uses: ./.github/workflows/integration-awslc.yml
+    with:
+      commit: v5.8.0
+  ct-test:
+    name: Constant-time
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: [ base, nix ]
+    uses: ./.github/workflows/ct-tests.yml
+  slothy:
+    name: SLOTHY
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: [ base, nix ]
+    uses: ./.github/workflows/slothy.yml
+    secrets:
+      AWS_GITHUB_TOKEN: ${{ secrets.AWS_GITHUB_TOKEN }}
+  baremetal:
+    name: Baremetal
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: [ base ]
+    uses: ./.github/workflows/baremetal.yml
+  zephyr:
+    name: Zephyr
+    permissions:
+      contents: 'read'
+    needs: [ base ]
+    uses: ./.github/workflows/zephyr.yml
+  hol-light:
+    name: HOL-Light
+    permissions:
+      contents: 'read'
+    uses: ./.github/workflows/hol_light.yml
+  # Single required status check for branch protection and the merge queue; jobs added to this workflow must also be added to the needs list below to gate merges.
+  # riscv excluded as the RISE runners tend to be flaky.
+  ci-summary:
+    name: CI Summary
+    if: always()
+    needs: [ base, lint-markdown, nix, ci, cbmc, oqs_integration, awslc_integration, ct-test, slothy, baremetal, pavona_integration, zephyr, hol-light ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

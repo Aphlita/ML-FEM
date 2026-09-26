@@ -1,0 +1,34 @@
+# Copyright (c) The mlkem-native project authors
+# SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
+
+name: Dependencies (yum)
+description: Install dependencies via yum
+
+inputs:
+  packages:
+    description: Space-separated list of additional packages to install
+    required: false
+    default: ''
+  sudo:
+    required: false
+    default: 'sudo'
+
+runs:
+  using: composite
+  steps:
+    - name: Install base packages
+      shell: bash
+      env:
+        SUDO: ${{ inputs.sudo }}
+      run: |
+        # SUDO is an optional command prefix and PACKAGES a list, so both
+        # are deliberately left unquoted.
+        $SUDO yum install make gcc python3 git -y
+    - name: Install additional packages
+      if: ${{ inputs.packages != ''}}
+      shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+        SUDO: ${{ inputs.sudo }}
+      run: |
+        $SUDO yum install $PACKAGES -y

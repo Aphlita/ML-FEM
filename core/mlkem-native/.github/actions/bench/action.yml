@@ -1,0 +1,140 @@
+# Copyright (c) The mlkem-native project authors
+# SPDX-License-Identifier: Apache-2.0 OR ISC OR MIT
+
+name: Bench mlkem-native
+description: Run benchmarking script
+
+inputs:
+  name:
+    description: Name for the benchmarking run
+    required: true
+  perf:
+    description: Method of obtaining PMU metrics
+    required: true
+    default: "PERF"
+  cflags:
+    description: CFLAGS to pass to compilation
+    default: ""
+  archflags:
+    description: ARCHFLAGS to pass to compilation
+    default: ""
+  ldflags:
+    description: LDFLAGS to pass to compilation
+    default: ""
+  opt:
+    description: opt flag to set for tests script
+    default: "true"
+  bench_extra_args:
+    description: Further arguments to be appended to command line for `bench` script
+    default: ""
+  store_results:
+    description: Whether to push results to GH pages
+    default: "false"
+  gh_token:
+    description: GitHub access token
+    required: true
+  nix-shell:
+    description: Run in the specified Nix environment if exists
+    default: "bench"
+  nix-cache:
+    description: Determine whether to enable nix cache
+    default: 'false'
+  nix-verbose:
+    description: Determine wether to suppress nix log or not
+    default: 'false'
+  custom_shell:
+    description: The shell to use. Only relevant if no nix-shell specified
+    default: "bash"
+  platform:
+    description: Test platform profile
+    default: ""
+  cross_prefix:
+    description: "Binary prefix for cross-compilation builds"
+    default: ""
+  alert_threshold:
+    description: "Set alert threshold in percentage for benchmark result"
+    default: "103%"
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/setup-shell
+      with:
+        nix-shell: ${{ inputs.nix-shell }}
+        nix-cache: ${{ inputs.nix-cache }}
+        nix-verbose: ${{ inputs.nix-verbose }}
+        gh_token: ${{ inputs.gh_token }}
+        custom_shell: ${{ inputs.custom_shell }}
+        script: |
+          ARCH=$(uname -m)
+          cat >> $GITHUB_STEP_SUMMARY <<-EOF
+            ## Setup
+            Architecture: $ARCH
+            - $(uname -a)
+            - $(nix --version)
+            - $(${{ matrix.target.cross_prefix }}gcc --version | grep -m1 "")
+            - $(bash --version | grep -m1 "")
+
+            ## CPU Info
+            $(cat /proc/cpuinfo)
+          EOF
+    - name: Run benchmark
+      shell: ${{ env.SHELL }}
+      env:
+        BENCH_ARCHFLAGS: ${{ inputs.archflags }}
+        BENCH_CFLAGS: ${{ inputs.cflags }}
+        BENCH_CROSS_PREFIX: ${{ inputs.cross_prefix }}
+        BENCH_EXTRA_ARGS: ${{ inputs.bench_extra_args }}
+        BENCH_LDFLAGS: ${{ inputs.ldflags }}
+        BENCH_OPT: ${{ inputs.opt }}
+        BENCH_PERF: ${{ inputs.perf }}
+        BENCH_PLATFORM: ${{ inputs.platform }}
+      run: |
+        platform_args=()
+        if [[ -n "$BENCH_PLATFORM" ]]; then
+          platform_args+=(--platform="$BENCH_PLATFORM")
+        fi
+
+        if [[ "$BENCH_OPT" == "false" ]]; then
+          bench_opt=no_opt
+        else
+          bench_opt=opt
+        fi
+
+        # Split on whitespace, as the previous unquoted expansion did.
+        extra_args=()
+        if [[ -n "$BENCH_EXTRA_ARGS" ]]; then
+          read -ra extra_args <<<"$BENCH_EXTRA_ARGS"
+        fi
+
+        bench=(
+          ./scripts/tests bench
+          -c "$BENCH_PERF"
+          "${platform_args[@]}"
+          "--cross-prefix=$BENCH_CROSS_PREFIX"
+          "--cflags=$BENCH_CFLAGS $BENCH_ARCHFLAGS"
+          "--ldflags=$BENCH_LDFLAGS"
+          "--opt=$bench_opt"
+          -v
+        )
+
+        "${bench[@]}" --output=output.json "${extra_args[@]}"
+        "${bench[@]}" --components "${extra_args[@]}"
+    - name: Store benchmark result
+      uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
+      with:
+        name: ${{ inputs.name }}
+        tool: "customSmallerIsBetter"
+        output-file-path: output.json
+        github-token: ${{ inputs.gh_token }}
+        auto-push: ${{ inputs.store_results == 'true' }}
+        comment-on-alert: true
+        summary-always: true
+        alert-threshold: ${{ inputs.alert_threshold }}
+        comment-always: true
+    - name: Reset gh-pages if result is not pushed to gh-pages
+      shell: ${{ env.SHELL }}
+      if: ${{ inputs.store_results != 'true' }}
+      run: |
+        git -c advice.detachedHead=false switch gh-pages
+        git reset --hard HEAD~1
+        git checkout -
